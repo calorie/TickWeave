@@ -293,11 +293,13 @@ Access outside the declared access plan is a `RuntimeDeterminismFault`, not a ga
 
 ## 13. Revisions
 
-Each ResourceKey has a logical Revision.
+Each ResourceKey has a logical Revision even while its value is absent.
 
 A committed transaction that changes a key increments its revision exactly once, even if an AtomicIntent writes that key multiple times internally.
 
-Rejected transactions do not increment revisions.
+Deletion retains version history; recreation never resets revision. Rejected transactions do not increment revisions.
+
+The exact tombstone/version model is normative in `canonical-data.md`.
 
 ## 14. Conflict definition
 
@@ -554,3 +556,10 @@ Canonical serializability
 Cell / Worker / transport
     define only WHERE computation happens.
 ```
+
+
+## 31. Canonical representation supplement
+
+Canonical bytes, stable ID emission paths, state hashing, WritePrecondition normalization, and tombstone/revision rules are normative in `canonical-data.md`.
+
+Where legacy prose or examples use CAS/Sequential terminology, interpret the authoritative model as ExactRevision/Current.
