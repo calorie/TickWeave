@@ -153,8 +153,12 @@ Before substantive TickWeave implementation, read:
 1. `.agentic/PROJECT.md`
 2. `docs/architecture-constitution.md`
 3. `docs/tick-semantics.md`
-4. `docs/intent-event-semantics.md`
-5. `docs/implementation-plan.md`
+4. `docs/causal-frontier.md`
+5. `docs/intent-event-semantics.md`
+6. `docs/canonical-data.md`
+7. `docs/authority-model.md`
+8. `docs/bootstrap-kernel-contract.md`
+9. `docs/implementation-plan.md`
 
 Treat normative MUST/SHALL statements and the architecture invariants in those files as hard constraints.
 
