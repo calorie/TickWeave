@@ -163,38 +163,40 @@ struct AccessPlan {
 
 struct WriteAccess {
     key: ResourceKey,
-    mode: WriteMode,
+    precondition: WritePrecondition,
 }
 
-enum WriteMode {
-    CompareAndSet { expected_revision: Revision },
-    Sequential,
+enum WritePrecondition {
+    ExactRevision(Revision),
+    Current,
 }
 ```
 
 Vectors use canonical sort order and contain no duplicates.
 
-An EVALUATE-time snapshot observation is not itself a transactional read. If correctness requires the observed value to remain valid, the resulting operation must encode an appropriate guard/CAS/read dependency.
+An EVALUATE-time snapshot observation is not itself a transactional read. If correctness requires the observed value to remain valid, the resulting operation must encode an appropriate guard/ExactRevision/read dependency.
 
-## 7. Write modes
+## 7. Write preconditions
 
-### CompareAndSet
+### ExactRevision
 
-CAS is the default for ordinary exclusive world mutation.
+ExactRevision is used when mutation validity depends on an observed resource version.
 
-A transaction expecting revision R succeeds only if the provisional serial state still has R when the transaction is evaluated.
+A transaction expecting revision R succeeds only if the transaction-entry provisional revision equals R.
 
 This produces deterministic **first successful transaction wins**, not last-write-wins.
 
-### Sequential
+### Current
 
-Sequential is allowed only for operation schemas whose semantics explicitly compose against the latest provisional state.
+Current has no revision precondition. The operation resolves against the latest provisional value produced by earlier canonical transactions.
 
-Example: independent damage operations may all apply in canonical serial order.
+Example: independent damage/add operations may all compose in canonical serial order.
+
+Declaring write access to a key implicitly grants transactional read access to that key.
 
 ### Commutativity
 
-Commutativity is not a semantic WriteMode.
+Commutativity is not a semantic write precondition.
 
 The semantic truth is canonical serial execution. The runtime may combine/reorder physically only when it proves the optimized result is bit-identical to canonical semantics.
 
@@ -562,4 +564,4 @@ Cell / Worker / transport
 
 Canonical bytes, stable ID emission paths, state hashing, WritePrecondition normalization, and tombstone/revision rules are normative in `canonical-data.md`.
 
-Where legacy prose or examples use CAS/Sequential terminology, interpret the authoritative model as ExactRevision/Current.
+ExactRevision/Current are the only authoritative v0.1 write-precondition terms.
