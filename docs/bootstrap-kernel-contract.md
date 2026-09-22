@@ -259,3 +259,49 @@ Do not add a generic `guards` field to MutationIntent/AtomicIntent/Operation v1.
 Typed guard helpers belong to Operation schemas and compile to canonical payload plus declared reads/write preconditions.
 
 This keeps the core envelope stable.
+
+
+## 21. TransactionContext v1
+
+The semantic context exposes an entry view rather than assuming resources always exist:
+
+```rust
+struct ResourceEntryView<'a> {
+    revision: Revision,
+    value: Option<&'a StateValue>,
+}
+
+trait TransactionContext {
+    fn entry(&self, key: &ResourceKey) -> ResourceEntryView<'_>;
+    fn write(&mut self, key: &ResourceKey, value: StateValue);
+    fn delete(&mut self, key: &ResourceKey);
+    fn emit(&mut self, draft: EventDraft);
+    fn random_u64(
+        &self,
+        stream_id: u32,
+        invocation_index: u32,
+    ) -> u64;
+}
+```
+
+A never-seen key reads as revision 0 / absent.
+
+The context enforces the declared normalized AccessPlan.
+
+Writes/deletes are transaction-local until acceptance.
+
+## 22. Wave evaluation boundary
+
+Evaluation for a Wave reads the immutable provisional state produced by prior Waves.
+
+Evaluation emits deterministic Intent/AtomicIntent drafts; it does not mutate state.
+
+Event-derived transaction IDs use `CauseRef::SimulationEvent(event.id)` plus schema-defined EmissionPath.
+
+Resolution then processes the complete admitted transaction set for that Wave.
+
+## 23. Test Ruleset
+
+Use the reserved schema IDs and bootstrap reactive-limit values defined by `canonical-data.md`.
+
+Do not allocate alternative numeric IDs for the required conformance schemas.
