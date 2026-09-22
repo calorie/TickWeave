@@ -53,10 +53,11 @@ Implement strong newtypes for at least:
 
 ```text
 WorldId ObjectId IntentId AtomicIntentId EventId InputId ScheduleId
-RulesetId ResolutionPoint EmissionPath Revision ResourceKey ResourceEntry
-OperationSchemaId EventSchemaId Operation AccessPlan WriteAccess
-WritePrecondition MutationIntent AtomicIntent SimulationEvent CauseRef
-OriginRef TransactionReceipt
+RulesetId ResolutionPoint EmissionPath Revision CanonicalBytes
+SemanticAddress ResourceKey StateValue ResourceEntry
+OperationSchemaId EventSchemaId StateSchemaId Operation AccessPlan WriteAccess
+WritePrecondition MutationIntent AtomicIntent EventDraft SimulationEvent CauseRef
+OriginRef AnyIntentId TransactionReceipt WorldSnapshotV1
 ```
 
 Minecraft-specific ResourceKey variants may remain test-oriented until Phase 2, but canonical extension/ordering must be explicit.
@@ -241,3 +242,20 @@ Gameplay semantics must not depend on these presentation orders, but conformance
 Use the exact generic `ResourceKey`, `StateValue`, schema IDs, RulesetManifestV1, RNG v1, and tie-break v1 definitions from `canonical-data.md`.
 
 Do not invent Minecraft-specific canonical enum discriminants during Phase 0/1.
+
+
+## 19. Snapshot semantics
+
+Use `WorldSnapshotV1` from `canonical-data.md` as the exact reference state-hash payload.
+
+The kernel starts a Tick from S[T], keeps all Wave effects provisional, and produces S[T+1] only after successful Tick commit.
+
+There is no authoritative intermediate-Wave snapshot.
+
+## 20. Guard representation
+
+Do not add a generic `guards` field to MutationIntent/AtomicIntent/Operation v1.
+
+Typed guard helpers belong to Operation schemas and compile to canonical payload plus declared reads/write preconditions.
+
+This keeps the core envelope stable.
