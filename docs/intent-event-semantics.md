@@ -202,7 +202,7 @@ The semantic truth is canonical serial execution. The runtime may combine/reorde
 
 ## 8. Guards
 
-Standard guards may include:
+Schemas may expose typed guard helpers equivalent to:
 
 ```rust
 enum Guard {
@@ -214,6 +214,8 @@ enum Guard {
 ```
 
 Operation-specific conditions are evaluated through declared transactional reads.
+
+Guard helpers are not fields of the core v1 Intent envelope; schemas encode required predicates in their canonical payload/access plan.
 
 A gameplay guard failure is a normal deterministic rejection, not a runtime fault.
 
@@ -255,18 +257,7 @@ Any member failure rejects the whole transaction. No partial state or buffered e
 
 ## 11. Cause and origin
 
-Representative cause chain:
-
-```rust
-enum CauseRef {
-    ExternalInput(InputId),
-    SimulationEvent(EventId),
-    Scheduled(ScheduleId),
-    Intent(IntentId),
-    AtomicIntent(AtomicIntentId),
-    System(SystemCauseId),
-}
-```
+The exact v0.1 CauseRef enum tags and generic OriginRef encoding are defined by `canonical-data.md`.
 
 Origin records stable semantic source information for tracing and source-sequence constraints. It must not contain Worker, Cell, process, or thread identity.
 
@@ -413,9 +404,9 @@ struct SimulationEvent {
 }
 ```
 
-Targets are stable semantic addresses such as EntityId, block position, scheduled object, or logical service object.
+Source and target use the generic stable SemanticAddress defined by `canonical-data.md`. Typed Entity/block/service addresses are wrappers over that representation.
 
-EventTarget MUST NOT contain WorkerId, CellId, NodeId, or network address.
+SemanticAddress MUST NOT contain WorkerId, CellId, NodeId, or network address.
 
 Routing is resolved at delivery time against current authority.
 
