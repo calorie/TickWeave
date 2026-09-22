@@ -145,3 +145,21 @@ Execution topology does not determine PR topology.
 - Update lockfiles when supported.
 - Pin GitHub Actions to the full commit SHA of the latest stable release and include a version comment.
 - Use pre-release versions only for an explicit reason.
+
+## TickWeave architecture authority
+
+Before substantive TickWeave implementation, read:
+
+1. `.agentic/PROJECT.md`
+2. `docs/architecture-constitution.md`
+3. `docs/tick-semantics.md`
+4. `docs/intent-event-semantics.md`
+5. `docs/implementation-plan.md`
+
+Treat normative MUST/SHALL statements and the architecture invariants in those files as hard constraints.
+
+Do not silently weaken Partition Invariance, deterministic resolution, ownership fencing, or the no-global-barrier model for implementation convenience.
+
+If a requested change requires violating an authoritative semantic rule, surface it as an architecture decision and update the specification/ADR before encoding a new behavior in code.
+
+For simulation code, topology is not a gameplay API: do not expose Worker, Cell, thread, process, network, or storage identity to semantic modules.
