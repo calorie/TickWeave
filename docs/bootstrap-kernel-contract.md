@@ -305,3 +305,24 @@ Resolution then processes the complete admitted transaction set for that Wave.
 Use the reserved schema IDs and bootstrap reactive-limit values defined by `canonical-data.md`.
 
 Do not allocate alternative numeric IDs for the required conformance schemas.
+
+
+## 24. Resolver outcome
+
+An Operation resolver returns either success or a normal `RejectReason`.
+
+On success, staged writes/deletes/events remain transaction-private until the transaction accepts.
+
+On RejectReason, all private effects of that MutationIntent or AtomicIntent are discarded.
+
+ExactRevision mismatch is checked by the kernel before schema resolution and produces `RejectReason::RevisionMismatch`.
+
+Invalid schema/payload/state bytes are runtime faults, not RejectReason values.
+
+## 25. State-schema registry
+
+The bootstrap kernel registry includes StateSchema validators from the active RulesetManifest.
+
+No StateValue is committed without deterministic schema validation.
+
+The required test StateSchema IDs are fixed by `canonical-data.md`.
