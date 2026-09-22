@@ -1,0 +1,34 @@
+# Project-level configuration loaded by Codex for trusted projects.
+# Routine repository development should proceed autonomously. Human approval is
+# reserved for explicit merge/integration boundaries and important design choices.
+
+default_permissions = "agentic-development"
+
+[approval_policy.granular]
+sandbox_approval = false
+rules = true
+mcp_elicitations = false
+request_permissions = false
+skill_approval = false
+
+[permissions.agentic-development]
+description = "Autonomous repository development with writable Git metadata"
+extends = ":workspace"
+
+[permissions.agentic-development.filesystem.":workspace_roots"]
+"." = "write"
+".git" = "write"
+
+[permissions.agentic-development.network]
+enabled = true
+
+[agents]
+enabled = true
+
+[marketplaces.agentic-engineering]
+source_type = "git"
+source = "https://github.com/calorie/agentic-engineering.git"
+sparse_paths = [".agents/plugins", "plugins/agentic-engineering"]
+
+[plugins."agentic-engineering@agentic-engineering"]
+enabled = true
