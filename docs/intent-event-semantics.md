@@ -334,14 +334,19 @@ Physical execution may be parallel/distributed.
 
 ## 17. Happens-before
 
-The canonical order honors explicit causal constraints including:
+Within one ResolutionPoint, cross-transaction happens-before is defined exactly by OriginRef stream ordering:
 
-- earlier sequence in the same normalized input stream;
-- cause before work directly emitted from that cause when they share a resolution ordering domain;
-- AtomicIntent member order;
-- earlier reactive Wave before later reactive Wave.
+- same `origin.source`;
+- same `origin.stream`;
+- lower `origin.sequence` happens-before higher sequence.
 
-The precise graph must be acyclic; cycles indicate a specification/runtime fault.
+Equal sequence values are concurrent and use tie-break ordering.
+
+AtomicIntent member order is internal to one transaction, not a graph edge between transactions.
+
+Earlier reactive Waves precede later Waves by ResolutionPoint semantics and therefore are not represented as same-Wave graph edges.
+
+The precise bootstrap rule is also recorded in `canonical-data.md`. Any resulting cycle is a specification/runtime fault.
 
 ## 18. Deterministic tie-break
 
