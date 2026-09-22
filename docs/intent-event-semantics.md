@@ -256,17 +256,17 @@ Origin records stable semantic source information for tracing and source-sequenc
 Resolvers receive only deterministic capabilities:
 
 ```rust
+struct ResourceEntryView<'a> {
+    revision: Revision,
+    value: Option<&'a StateValue>,
+}
+
 trait TransactionContext {
-    fn read(&self, key: &ResourceKey) -> StateValue;
-    fn revision(&self, key: &ResourceKey) -> Revision;
+    fn entry(&self, key: &ResourceKey) -> ResourceEntryView<'_>;
     fn write(&mut self, key: &ResourceKey, value: StateValue);
     fn delete(&mut self, key: &ResourceKey);
     fn emit(&mut self, event: EventDraft);
-    fn deterministic_random(
-        &self,
-        stream: RandomStreamId,
-        invocation: u32,
-    ) -> RandomValue;
+    fn random_u64(&self, stream_id: u32, invocation_index: u32) -> u64;
 }
 ```
 
@@ -278,9 +278,9 @@ Access outside the declared access plan is a `RuntimeDeterminismFault`, not a ga
 
 Each ResourceKey has a logical Revision even while its value is absent.
 
-A committed transaction that changes a key increments its revision exactly once, even if an AtomicIntent writes that key multiple times internally.
+An accepted transaction that invokes write/delete on a key increments its revision exactly once, even if the final bytes equal the prior value or an AtomicIntent touches the key multiple times.
 
-Deletion retains version history; recreation never resets revision. Rejected transactions do not increment revisions.
+A never-seen key is implicit revision 0 / absent. Deletion retains version history; recreation never resets revision. Rejected transactions do not increment revisions.
 
 The exact tombstone/version model is normative in `canonical-data.md`.
 
@@ -370,7 +370,7 @@ enum TransactionStatus {
 }
 ```
 
-Representative rejection reasons include guard failure, revision mismatch, resource missing/already present, and semantic rule violation.
+The exact bootstrap TransactionStatus/RejectReason tags and TransactionReceipt encoding are defined by `canonical-data.md`.
 
 Rejected transactions remain part of the canonical ordering but produce no authoritative state delta.
 
@@ -391,8 +391,8 @@ struct SimulationEvent {
     id: EventId,
     world: WorldId,
     cause: CauseRef,
-    source: EventSource,
-    target: EventTarget,
+    source: SemanticAddress,
+    target: SemanticAddress,
     deliver_at: ResolutionPoint,
     schema: EventSchemaId,
     payload: CanonicalBytes,
