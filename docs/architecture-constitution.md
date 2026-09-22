@@ -68,15 +68,15 @@ Cell boundaries MUST NOT be visible to gameplay logic.
 
 ## 5. Authority and fencing
 
-Every authoritative Cell assignment has:
+Authority is separate from Cell identity.
 
-```text
-CellId
-OwnershipEpoch
-OwnerWorkerId
-```
+Spatial fencing is defined at Chunk granularity using a monotonic authority generation and current owner. A stale Worker generation cannot commit after authority has moved.
 
-All authoritative writes are accepted only under the current epoch. A stale Worker cannot write after authority has moved.
+Cell split/merge on the same owner is placement metadata and does not itself create a new fencing generation.
+
+Non-spatial state uses explicit named authority domains.
+
+See `authority-model.md`.
 
 Single-writer authority is logical; computation within an authority MAY use parallel evaluation so long as commit semantics remain deterministic.
 
@@ -86,7 +86,7 @@ The World has a common `TickId` namespace with a nominal 20 Hz real-time pace.
 
 There is no world-wide completion barrier.
 
-Each causal domain advances its own commit frontier subject to dependencies defined by the Tick Semantics Specification.
+Each CausalIsland advances its own commit frontier subject to dependencies defined by the Tick Semantics and Causal Frontier specifications. Cell is not the synchronization frontier.
 
 Correctness has priority over wall-clock progress. An overloaded domain lags; it does not skip semantic ticks.
 
@@ -219,3 +219,16 @@ The runtime must support:
 ## 18. Change rule
 
 Changes that invalidate Partition Invariance, single-writer fencing, deterministic resolution, or the no-global-barrier model are architecture changes, not implementation refactors. They require an explicit specification/ADR decision before implementation.
+
+
+## 19. Canonical representation
+
+Canonical encoding, semantic hashing, revision/tombstone behavior, stable ID derivation, and RulesetId are defined by `canonical-data.md` and are part of authoritative semantics.
+
+## 20. Safe-time
+
+No CausalIsland may commit a point if causal work can still legally be admitted into that point or its past.
+
+New remote dependencies require future admission/reservation as defined by `causal-frontier.md`.
+
+WorldPacer is not a substitute for safe-time proof.

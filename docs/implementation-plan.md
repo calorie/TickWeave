@@ -12,6 +12,8 @@ First create a small deterministic kernel whose reference semantics can be exhau
 
 ## Phase 0 — Specification and conformance skeleton
 
+Execution contract: `docs/bootstrap-kernel-contract.md`.
+
 Deliver:
 
 - Rust workspace skeleton.
@@ -29,6 +31,10 @@ Acceptance:
 - No runtime/topology identity appears in semantic types.
 
 ## Phase 1 — Single-process reference transaction kernel
+
+Execution contract: `docs/bootstrap-kernel-contract.md`.
+
+The reference kernel uses exactly one CausalIsland and one in-process authority. Do not implement distributed safe-time yet.
 
 Implement:
 
@@ -58,6 +64,8 @@ Acceptance:
 
 ## Phase 2 — Spatial world model
 
+Follow `docs/authority-model.md`. Chunk authority is separate from Cell placement.
+
 Implement authoritative primitives:
 
 - World / Dimension.
@@ -79,6 +87,8 @@ Acceptance:
 ## Phase 3 — Cell runtime in one process
 
 Introduce dynamic Cells as runtime grouping only.
+
+CausalIsland semantics and safe-time invariants come from `docs/causal-frontier.md`; Cell is neither a synchronization identity nor a fencing identity.
 
 Implement:
 

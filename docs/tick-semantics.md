@@ -17,7 +17,7 @@ A World has one TickId namespace. Nominal pace is 20 Hz / 50 ms per tick.
 
 A lightweight WorldPacer defines the maximum real-time TickId active simulation may reach. It never waits for every Cell.
 
-Each causal domain has its own committed frontier.
+Each CausalIsland has its own committed frontier.
 
 Example:
 
@@ -140,7 +140,7 @@ No rule may require every Cell in the World to finish Tick T before an unrelated
 
 Synchronization is causal and scoped.
 
-A domain waits only for dependencies required to know that its relevant input/event set for the current ResolutionPoint is closed.
+A CausalIsland waits only for registered dependencies required to prove that its relevant input/event set for the current ResolutionPoint is closed. The exact safe-time/admission protocol is defined in `causal-frontier.md`.
 
 Unrelated distant regions do not wait for one another.
 
@@ -318,3 +318,12 @@ The runtime may increase intra-domain parallelism, repartition, migrate, or scal
 ## 22. Conformance property
 
 For a fixed initial state, normalized event log, and world-rules version, all legal executions across different Worker/Cell/thread topologies must produce equal canonical committed state hashes at comparable Tick boundaries.
+
+
+## 23. CausalIsland safe-time reference
+
+The safety rule for independent progress is normative in `causal-frontier.md`.
+
+An island may not commit a ResolutionPoint merely because no message has arrived yet. It needs closure proof for registered inbound dependencies, and a previously unrelated sender must reserve a future legal admission point before creating a new dependency.
+
+Phase 0/1 uses a single CausalIsland, so this distributed protocol is not implemented in the bootstrap kernel.

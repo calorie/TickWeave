@@ -33,8 +33,12 @@ Read these before implementation:
 
 1. [Architecture Constitution](docs/architecture-constitution.md)
 2. [Tick Semantics Specification](docs/tick-semantics.md)
-3. [Intent and Event Semantics Specification](docs/intent-event-semantics.md)
-4. [Implementation Plan](docs/implementation-plan.md)
+3. [Causal Frontier and Island Semantics](docs/causal-frontier.md)
+4. [Intent and Event Semantics Specification](docs/intent-event-semantics.md)
+5. [Canonical Data and Identity Semantics](docs/canonical-data.md)
+6. [Authority and Residency Model](docs/authority-model.md)
+7. [Bootstrap Kernel Implementation Contract](docs/bootstrap-kernel-contract.md)
+8. [Implementation Plan](docs/implementation-plan.md)
 
 These documents define semantic constraints. Implementation convenience is not a reason to violate them.
 
