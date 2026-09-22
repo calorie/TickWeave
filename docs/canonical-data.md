@@ -228,3 +228,166 @@ Distributed implementations may use Merkle/incremental hashes only if the result
 Phase 0 must commit golden byte/hash vectors covering all primitive/container rules, ResourceKey ordering, ResourceEntry tombstones, stable ID derivation, RulesetId, and one complete state hash.
 
 These vectors are compatibility fixtures and must not be rewritten merely because implementation changes.
+
+
+## 14. Core semantic ABI v1
+
+The Phase 0/1 kernel uses a generic core ResourceKey rather than freezing Minecraft-specific enum tags too early.
+
+```rust
+struct ResourceNamespaceId(u32);
+struct ResourceKindId(u32);
+struct StateSchemaId(u32);
+
+struct CanonicalBytes(Vec<u8>);
+
+struct ResourceKey {
+    namespace: ResourceNamespaceId,
+    kind: ResourceKindId,
+    key: CanonicalBytes,
+}
+
+struct StateValue {
+    schema: StateSchemaId,
+    bytes: CanonicalBytes,
+}
+```
+
+Canonical ResourceKey order is lexicographic over the canonical encoding of `(namespace, kind, key)`.
+
+Phase 2 typed Minecraft keys are constructors/adapters over this semantic key space. They may not change the v1 ordering of already-defined keys.
+
+A `CanonicalBytes` value is opaque to the kernel. Its owning schema is responsible for validating canonical payload/state bytes.
+
+## 15. Schema identifiers
+
+The bootstrap semantic ABI uses:
+
+```rust
+struct OperationSchemaId {
+    namespace: u32,
+    operation: u32,
+    version: u32,
+}
+
+struct EventSchemaId {
+    namespace: u32,
+    event: u32,
+    version: u32,
+}
+```
+
+Ordering is lexicographic by fields in declaration order.
+
+StateSchemaId is a u32 identifier inside a Ruleset. A future cross-project registry may expand this only under a new ABI version.
+
+## 16. Bootstrap RulesetManifest v1
+
+The Phase 0/1 manifest is canonically encoded in this field order:
+
+```rust
+struct RulesetManifestV1 {
+    semantics_version: u32,
+    canonical_encoding_version: u32,
+    numeric_profile_version: u32,
+    rng_profile_version: u32,
+    max_reactive_rounds: u32,
+    max_reactive_events_per_tick: u64,
+    operation_schemas: Vec<OperationSchemaId>,
+    event_schemas: Vec<EventSchemaId>,
+    state_schemas: Vec<StateSchemaId>,
+    gameplay_config: CanonicalBytes,
+}
+```
+
+Schema vectors are sorted canonically and contain no duplicates.
+
+For bootstrap fixtures, all version fields are `1` unless a test explicitly exercises version differences.
+
+## 17. Deterministic RNG v1
+
+The bootstrap RNG host primitive is:
+
+```text
+random_u64(
+  world_seed,
+  intent_id,
+  operation_member_index,
+  stream_id,
+  invocation_index
+)
+```
+
+where `world_seed` is exactly 32 bytes and integer fields use Canonical Encoding v1.
+
+Compute:
+
+```text
+digest = H(
+  "rng/v1",
+  Canonical(
+    world_seed,
+    intent_id,
+    operation_member_index:u32,
+    stream_id:u32,
+    invocation_index:u32
+  )
+)
+```
+
+Return the first 8 digest bytes interpreted as little-endian u64.
+
+No mutable RNG cursor exists outside the explicit invocation index.
+
+## 18. Tie-break v1
+
+`world_order_seed` is exactly 32 authoritative bytes.
+
+For an Intent at ResolutionPoint `(tick,wave)`:
+
+```text
+tie_break =
+  H(
+    "intent-order/v1",
+    Canonical(
+      world_order_seed,
+      tick:u64,
+      wave:u32,
+      intent_id
+    )
+  )
+```
+
+Compare the 32-byte tie-break values lexicographically. IntentId bytes are the collision fallback.
+
+## 19. Identity collision rule
+
+If an already-known IntentId/EventId/ObjectId is encountered again:
+
+- identical canonical semantic content is an idempotent duplicate only where that ID class explicitly allows retry/dedup;
+- differing canonical content under the same ID is a RuntimeDeterminismFault;
+- duplicate emission of the same newly-generated ID inside one cause is a RuntimeDeterminismFault even if bytes match.
+
+Cryptographic collision is not silently resolved by generating another ID.
+
+## 20. Event admission ledger
+
+Exactly-once SimulationEvent semantics requires durable knowledge of admitted EventIds.
+
+The Phase 0/1 reference kernel retains an unbounded canonical EventAdmissionLedger.
+
+An entry binds EventId to the hash of its canonical event content.
+
+Repeated identical physical delivery is ignored semantically. Same EventId with different content is a RuntimeDeterminismFault.
+
+The ledger is included in the reference replay state and canonical state hash because it can change the result of future duplicate delivery.
+
+Production GC is deferred. A later implementation may delete ledger entries only after a proven transport/durability watermark makes recurrence impossible.
+
+## 21. Overflow
+
+Revision, TickId, WaveId, sequence, and canonical length arithmetic use checked operations.
+
+Semantic counters never wrap.
+
+Exhaustion/overflow is a RuntimeDeterminismFault (or process-fatal equivalent before any affected commit), not modulo arithmetic.
