@@ -204,3 +204,40 @@ Codex may choose module/file layout inside the three crates, private helper type
 ## 14. Definition of done
 
 Phase 0/1 is complete when all required checks pass, golden vectors are committed, randomized physical-order tests preserve canonical results, replay reproduces receipts/events/hash, semantic types contain no topology identity, and deferred design gaps are explicitly recorded rather than hidden in code.
+
+
+## 15. Fault atomicity
+
+Gameplay rejection is local to the rejected transaction and normal execution continues.
+
+A RuntimeDeterminismFault, invalid canonical value, happens-before cycle, ID/content collision, undeclared access, or semantic counter overflow aborts the entire current Tick for the single reference CausalIsland.
+
+All provisional writes/events produced since the beginning of that Tick are discarded and the committed state remains S[T].
+
+The kernel must not partially commit earlier Waves from a faulted Tick.
+
+## 16. Event admission ledger
+
+Phase 0/1 keeps an unbounded EventAdmissionLedger as specified by `canonical-data.md`.
+
+Do not implement dedup GC yet.
+
+The ledger is part of replay/state-hash conformance.
+
+## 17. Canonical observable ordering
+
+Physical execution order of independent conflict components is non-semantic.
+
+When the reference harness emits ordered diagnostic/conformance collections:
+
+- TransactionReceipts are sorted by canonical intent identity bytes;
+- newly materialized SimulationEvents are sorted by EventId bytes;
+- Resource deltas are sorted by ResourceKey canonical bytes.
+
+Gameplay semantics must not depend on these presentation orders, but conformance outputs use them so replay artifacts are byte-stable.
+
+## 18. Generic bootstrap key/value model
+
+Use the exact generic `ResourceKey`, `StateValue`, schema IDs, RulesetManifestV1, RNG v1, and tie-break v1 definitions from `canonical-data.md`.
+
+Do not invent Minecraft-specific canonical enum discriminants during Phase 0/1.
