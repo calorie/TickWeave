@@ -653,3 +653,61 @@ State schema IDs:
 All versions are 1.
 
 These identifiers are conformance fixtures, not Minecraft production schema allocation.
+
+
+## 32. Transaction receipt v1
+
+Bootstrap conformance receipts use:
+
+```rust
+struct SemanticErrorCode(u32);
+
+enum RejectReason {
+    GuardFailed,                         // tag 0
+    RevisionMismatch,                   // tag 1
+    ResourceMissing,                    // tag 2
+    ResourceAlreadyExists,              // tag 3
+    SemanticRuleViolation(SemanticErrorCode), // tag 4
+}
+
+enum TransactionStatus {
+    Accepted,                           // tag 0
+    Rejected(RejectReason),             // tag 1
+}
+
+struct ResourceDelta {
+    key: ResourceKey,
+    before: ResourceEntry,
+    after: ResourceEntry,
+}
+
+struct TransactionReceipt {
+    intent: AnyIntentId,
+    status: TransactionStatus,
+    state_delta_hash: [u8; 32],
+    emitted_event_ids: Vec<EventId>,
+}
+```
+
+For receipt construction:
+
+- ResourceDelta entries are sorted by ResourceKey;
+- `state_delta_hash = H("delta/v1", Canonical(Vec<ResourceDelta>))`;
+- emitted_event_ids are sorted by EventId;
+- rejected transactions use the hash of an empty delta vector and emit no EventIds.
+
+Receipts are conformance artifacts, not authoritative world resources.
+
+## 33. State schema validation
+
+The bootstrap registry includes a deterministic state-schema validator:
+
+```rust
+trait StateSchema {
+    fn validate(bytes: &CanonicalBytes) -> Result<(), SchemaError>;
+}
+```
+
+Every StateValue written by an accepted transaction must reference a StateSchemaId present in the active RulesetManifest and pass that schema's canonical validation.
+
+Invalid state bytes are a RuntimeDeterminismFault and abort the current Tick before commit.
