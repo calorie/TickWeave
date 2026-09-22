@@ -25,6 +25,7 @@ Primitive encoding:
 | bytes | `u64` byte length, then raw bytes |
 | UTF-8 text | `u64` byte length, then exact UTF-8 bytes |
 | sequence | `u64` element count, then elements |
+| fixed-size array | elements in order, no length prefix |
 | struct | fields in schema-defined order, no field names |
 
 Variable-length integer encodings are not used in Canonical Encoding v1.
@@ -391,3 +392,155 @@ Revision, TickId, WaveId, sequence, and canonical length arithmetic use checked 
 Semantic counters never wrap.
 
 Exhaustion/overflow is a RuntimeDeterminismFault (or process-fatal equivalent before any affected commit), not modulo arithmetic.
+
+
+## 22. Generic semantic addresses
+
+Phase 0/1 avoids freezing Minecraft-specific address enum tags.
+
+```rust
+struct SemanticAddress {
+    namespace: u32,
+    kind: u32,
+    key: CanonicalBytes,
+}
+
+struct OriginRef {
+    source: SemanticAddress,
+    stream: u32,
+    sequence: u64,
+}
+```
+
+Canonical address order is lexicographic over `(namespace, kind, key)`.
+
+Typed Player/Entity/Block/System/EventTarget wrappers introduced later construct SemanticAddress values; they do not alter core encoding.
+
+## 23. CauseRef and intent identity tags v1
+
+```rust
+enum CauseRef {
+    ExternalInput(InputId),          // tag 0
+    SimulationEvent(EventId),       // tag 1
+    Scheduled(ScheduleId),          // tag 2
+    Intent(IntentId),               // tag 3
+    AtomicIntent(AtomicIntentId),   // tag 4
+    System(SemanticAddress),        // tag 5
+}
+
+enum AnyIntentId {
+    Mutation(IntentId),             // tag 0
+    Atomic(AtomicIntentId),         // tag 1
+}
+```
+
+The comments define fixed Canonical Encoding v1 enum tags.
+
+All fixed-size 16/32-byte ID newtypes encode as their raw bytes with no length prefix.
+
+## 24. Operation and event envelope v1
+
+```rust
+struct Operation {
+    schema: OperationSchemaId,
+    payload: CanonicalBytes,
+}
+
+struct MutationIntent {
+    id: IntentId,
+    world: WorldId,
+    point: ResolutionPoint,
+    cause: CauseRef,
+    origin: OriginRef,
+    operation: Operation,
+}
+
+struct AtomicIntent {
+    id: AtomicIntentId,
+    world: WorldId,
+    point: ResolutionPoint,
+    cause: CauseRef,
+    origin: OriginRef,
+    operations: Vec<Operation>, // canonical validation requires non-empty
+}
+
+struct SimulationEvent {
+    id: EventId,
+    world: WorldId,
+    cause: CauseRef,
+    source: SemanticAddress,
+    target: SemanticAddress,
+    deliver_at: ResolutionPoint,
+    schema: EventSchemaId,
+    payload: CanonicalBytes,
+}
+```
+
+Generic Guard values are not fields of the v1 Intent envelope. Schema-specific predicates are encoded in operation payloads and reflected in declared transactional reads/write preconditions. Host libraries may provide typed guard helpers.
+
+## 25. EventDraft v1
+
+A resolver emits an EventDraft, not a pre-built EventId:
+
+```rust
+struct EventDraft {
+    emission_path: EmissionPath,
+    source: SemanticAddress,
+    target: SemanticAddress,
+    deliver_at: ResolutionPoint,
+    schema: EventSchemaId,
+    payload: CanonicalBytes,
+}
+```
+
+The runtime sets `cause` from the accepted parent transaction and derives EventId from the parent cause/transaction identity plus the deterministic emission path.
+
+An EventDraft targeting the same Tick must satisfy `deliver_at.wave >= current_wave + 1`.
+
+## 26. Reference WorldSnapshotV1
+
+The Phase 0/1 canonical state-hash payload is exactly:
+
+```rust
+struct WorldSnapshotV1 {
+    world: WorldId,
+    ruleset: RulesetId,
+    world_seed: [u8; 32],
+    world_order_seed: [u8; 32],
+    state_tick: TickId,
+    resources: Vec<(ResourceKey, ResourceEntry)>,
+    pending_events: Vec<SimulationEvent>,
+    event_admission_ledger: Vec<(EventId, [u8; 32])>,
+}
+```
+
+Canonical validation requires:
+
+- resources sorted by ResourceKey with no duplicate key;
+- pending_events sorted by `(deliver_at.tick, deliver_at.wave, EventId)`;
+- ledger sorted by EventId with no duplicate ID.
+
+`state_tick = T` means the snapshot is S[T], before executing Tick T.
+
+After committing Tick T, the resulting snapshot has `state_tick = T + 1`.
+
+The reference state hash is:
+
+```text
+H("state/v1", Canonical(WorldSnapshotV1))
+```
+
+For Phase 0/1, future scheduled semantic work is represented by pending SimulationEvents or explicit ResourceEntries; there is no additional hidden scheduled-work collection.
+
+## 27. Event content binding
+
+The EventAdmissionLedger value for EventId E is:
+
+```text
+H("event-content/v1", Canonical(SimulationEvent without id))
+```
+
+On duplicate delivery:
+
+- same EventId + same content hash -> idempotent duplicate;
+- same EventId + different content hash -> RuntimeDeterminismFault.
