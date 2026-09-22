@@ -23,7 +23,8 @@ When Rust workspace code is introduced, record the exact verified commands here.
 
 - Topology independence / Partition Invariance: Worker count, thread count, Cell grouping, Cell boundaries, placement, migration, split, and merge must not change committed simulation results for the same normalized input/event log and world-rules version.
 - Global TickId namespace, but no world-wide tick completion barrier.
-- A Chunk is the minimum ownership unit. A Cell is a dynamic scheduling and migration unit.
+- A Chunk is the minimum spatial authority unit. A Cell is a dynamic placement/migration grouping and is not itself a fencing identity.
+- CausalIsland is a safe-time/synchronization domain separate from Cell and Worker.
 - Mutable authoritative state has exactly one writer authority, fenced by ownership epoch.
 - Simulation code never observes Worker IDs, Cell IDs, process IDs, thread IDs, network topology, or storage topology.
 - Simulation mutation is declarative: immutable/provisional state -> intents -> deterministic resolution -> commit.
@@ -41,8 +42,12 @@ Read in this order before substantive architecture or runtime changes:
 
 1. `docs/architecture-constitution.md`
 2. `docs/tick-semantics.md`
-3. `docs/intent-event-semantics.md`
-4. `docs/implementation-plan.md`
+3. `docs/causal-frontier.md`
+4. `docs/intent-event-semantics.md`
+5. `docs/canonical-data.md`
+6. `docs/authority-model.md`
+7. `docs/bootstrap-kernel-contract.md`
+8. `docs/implementation-plan.md`
 
 If an implementation request conflicts with a MUST/SHALL invariant in those documents, do not silently reinterpret the invariant. Surface the design conflict.
 
@@ -54,3 +59,10 @@ None yet.
 
 - Minecraft protocol compatibility is an edge concern handled by Gateways.
 - Internal simulation protocol and storage formats are versioned independently from Minecraft protocol versions.
+
+
+## Bootstrap implementation status
+
+Phase 0/1 is implementation-ready on the bootstrap architecture branch.
+
+Codex should use `docs/bootstrap-kernel-contract.md` as the concrete execution contract. Phase 0/1 intentionally uses one CausalIsland and one in-process authority while preserving topology-independent semantic types.
