@@ -93,12 +93,14 @@ struct ResourceEntry {
 }
 ```
 
-Absence is versioned.
+A key that has never been materialized is implicitly `ResourceEntry { revision: 0, value: None }` and need not be stored.
+
+Absence after the first accepted write/delete is versioned and retained logically.
 
 Rules:
 
-- a successful transaction that semantically changes the key increments revision exactly once;
-- multiple writes to the same key inside one AtomicIntent still increment once;
+- a key on which an accepted transaction invokes write/delete increments revision exactly once, even if the final value bytes equal the prior value;
+- multiple writes/deletes to the same key inside one AtomicIntent still increment once;
 - rejection increments nothing;
 - deletion produces `value = None` and increments revision;
 - recreation increments revision again;
@@ -544,3 +546,110 @@ On duplicate delivery:
 
 - same EventId + same content hash -> idempotent duplicate;
 - same EventId + different content hash -> RuntimeDeterminismFault.
+
+
+## 28. Intent derivation v1
+
+When a semantic cause emits transaction drafts:
+
+```text
+IntentId =
+  H(
+    "intent/v1",
+    Canonical(cause_ref, emission_path)
+  )
+
+AtomicIntentId =
+  H(
+    "atomic-intent/v1",
+    Canonical(cause_ref, emission_path)
+  )
+```
+
+When an accepted transaction emits an EventDraft:
+
+```text
+parent_cause =
+  CauseRef::Intent(parent IntentId)
+  or
+  CauseRef::AtomicIntent(parent AtomicIntentId)
+
+EventId =
+  H(
+    "event/v1",
+    Canonical(parent_cause, emission_path)
+  )
+```
+
+The materialized SimulationEvent stores that `parent_cause` in its `cause` field.
+
+Event evaluation creates Intent/AtomicIntent drafts whose CauseRef is `SimulationEvent(event.id)`.
+
+## 29. Happens-before v1
+
+Within one ResolutionPoint, the bootstrap happens-before graph has one cross-transaction ordering rule:
+
+```text
+if
+  A.origin.source == B.origin.source
+  and A.origin.stream == B.origin.stream
+  and A.origin.sequence < B.origin.sequence
+then
+  A happens-before B
+```
+
+Only transactions in the same conflict component need the edge represented explicitly.
+
+Transactions with equal origin sequence are concurrent and use the deterministic tie-break.
+
+AtomicIntent member vector order is internal transaction order, not separate graph nodes.
+
+Cross-Wave causality is represented by ResolutionPoint ordering rather than an extra same-Wave edge.
+
+## 30. Bootstrap reactive limits
+
+For RulesetManifestV1:
+
+- `max_reactive_rounds == 0` means no configured round limit;
+- `max_reactive_events_per_tick == 0` means no configured event-count limit.
+
+The Phase 0/1 bootstrap Ruleset uses zero for both fields.
+
+Finite overflow/carry semantics are intentionally deferred to a later ruleset version before untrusted gameplay/plugin execution. Phase 0/1 test schemas must terminate.
+
+## 31. Bootstrap test schema IDs
+
+Use this reserved test namespace:
+
+```text
+TEST_NAMESPACE = 0xFFFF0001
+```
+
+Operation IDs:
+
+```text
+1 CreateValue
+2 DeleteValue
+3 PutExact
+4 AddCurrent
+5 TransferExact
+6 EmitOnSuccess
+7 SpawnStableObject
+```
+
+Event IDs:
+
+```text
+1 TestEvent
+```
+
+State schema IDs:
+
+```text
+1 SignedI64
+2 Bytes
+```
+
+All versions are 1.
+
+These identifiers are conformance fixtures, not Minecraft production schema allocation.
